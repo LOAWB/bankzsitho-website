@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SNAKE III - BankzSitho</title>
 <meta name="description" content="SNAKE III - The new album from BankzSitho. Available now on all platforms.">
+<meta name="theme-color" content="#030303">
+<meta property="og:title" content="SNAKE III - BankzSitho">
+<meta property="og:description" content="The trilogy concludes. Snake III available now on all platforms.">
+<meta property="og:image" content="cover.jpg">
+<meta property="og:type" content="music.album">
+<link rel="preload" href="cover.jpg" as="image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;500;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet">
@@ -313,6 +319,7 @@ nav {
   transform: scale(0.8);
   animation: coverReveal 1.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   animation-delay: 2.2s;
+  will-change: transform, opacity;
 }
 
 @keyframes coverReveal {
@@ -1226,18 +1233,56 @@ footer {
 .nav-toggle {
   display: none;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   cursor: pointer;
-  padding: 5px;
+  padding: 8px;
   background: none;
   border: none;
+  z-index: 9002;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .nav-toggle span {
   width: 24px;
-  height: 1px;
+  height: 1.5px;
   background: var(--gold);
-  transition: all 0.3s ease;
+  transition: transform 0.35s ease, opacity 0.25s ease;
+  display: block;
+  transform-origin: center;
+}
+
+.nav-toggle.active span:nth-child(1) {
+  transform: translateY(7.5px) rotate(45deg);
+}
+
+.nav-toggle.active span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+.nav-toggle.active span:nth-child(3) {
+  transform: translateY(-7.5px) rotate(-45deg);
+}
+
+/* Mobile nav overlay */
+.nav-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 8999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+body.nav-open {
+  overflow: hidden;
 }
 
 /* ============================================
@@ -1252,15 +1297,22 @@ footer {
     right: -100%;
     width: 70%;
     height: 100vh;
+    height: 100dvh;
     flex-direction: column;
     background: rgba(3, 3, 3, 0.98);
     backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     padding: 6rem 3rem;
     gap: 2rem;
-    transition: right 0.4s ease;
+    transition: right 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    z-index: 9001;
+    overscroll-behavior: contain;
   }
 
   .nav-links.open { right: 0; }
+
+  .nav-links a { opacity: 0.8; font-size: 0.8rem; }
+
   .nav-cta { display: none; }
   .nav-toggle { display: flex; }
 
@@ -1296,9 +1348,41 @@ footer {
   .track-feat { display: block; margin-left: 0; margin-top: 0.2rem; font-size: 0.75rem; }
 }
 
+@media (max-width: 768px) {
+  /* Kill grain animation on mobile for battery/perf */
+  .grain { animation: none; opacity: 0.02; }
+  .cover-glow { animation: none; opacity: 0.6; }
+
+  /* Reduce vignette opacity on mobile */
+  .vignette { background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%); }
+
+  /* Faster perceived load on mobile */
+  .hero-artist { animation-delay: 2s; }
+  .hero-cover-wrapper { animation-delay: 1.4s; }
+  .hero-title { animation-delay: 1.8s; }
+  .hero-subtitle { animation-delay: 2.2s; }
+  .hero-cta-group { animation-delay: 2.4s; }
+  nav { animation-delay: 2.4s; }
+  .scroll-indicator { animation-delay: 2.8s; }
+}
+
 @media (max-width: 480px) {
   .stream-grid { grid-template-columns: 1fr 1fr; }
   .hero-title { font-size: clamp(2.5rem, 12vw, 4rem); }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .grain { animation: none; }
+  .cover-glow { animation: none; }
+  .scroll-line { animation: none; }
+  .era-badge { animation: none; }
+  .eye-pupil { animation: none; }
 }
 </style>
 </head>
@@ -1324,6 +1408,7 @@ footer {
 <div class="letterbox-bottom"></div>
 
 <!-- NAVIGATION -->
+<div class="nav-overlay" id="navOverlay"></div>
 <nav>
   <a href="#" class="nav-brand">BankzSitho</a>
   <ul class="nav-links" id="navLinks">
@@ -1472,7 +1557,7 @@ footer {
   <h2 class="section-title reveal">The Artist</h2>
   <div class="artist-grid">
     <div class="artist-image-wrapper reveal reveal-delay-1">
-      <img src="artist.jpg" alt="BankzSitho" class="artist-image">
+      <img src="artist.jpg" alt="BankzSitho" class="artist-image" loading="lazy">
     </div>
     <div class="artist-info reveal reveal-delay-2">
       <h3 class="artist-name">BankzSitho</h3>
@@ -1508,7 +1593,7 @@ footer {
     <div class="timeline-era reveal reveal-delay-1">
       <p class="era-year">Chapter I</p>
       <div class="era-cover">
-        <img src="snake1-cover.png" alt="Snake I" class="era-cover-img">
+        <img src="snake1-cover.png" alt="Snake I" class="era-cover-img" loading="lazy">
       </div>
       <h3 class="era-title">Snake</h3>
       <p class="era-desc">The temptation. The forbidden fruit. Where the venom first entered the veins.</p>
@@ -1516,7 +1601,7 @@ footer {
     <div class="timeline-era reveal reveal-delay-2">
       <p class="era-year">Chapter II</p>
       <div class="era-cover">
-        <img src="snake2-cover.png" alt="Snake II" class="era-cover-img">
+        <img src="snake2-cover.png" alt="Snake II" class="era-cover-img" loading="lazy">
       </div>
       <h3 class="era-title">Snake II</h3>
       <p class="era-desc">The streets. Blade in hand, fangs out. No more hiding.</p>
@@ -1524,7 +1609,7 @@ footer {
     <div class="timeline-era era-current reveal reveal-delay-3">
       <p class="era-year">Chapter III</p>
       <div class="era-cover">
-        <img src="cover.jpg" alt="Snake III" class="era-cover-img">
+        <img src="cover.jpg" alt="Snake III" class="era-cover-img" loading="lazy">
       </div>
       <h3 class="era-title">Snake III</h3>
       <p class="era-desc">The coronation. The serpent takes the throne. No antidote.</p>
@@ -1541,7 +1626,7 @@ footer {
   <div class="more-music-grid">
     <a href="#" class="music-card reveal reveal-delay-1">
       <div class="music-card-cover">
-        <img src="lhbs-cover.png" alt="Love, Hate, And The Biggest Snake">
+        <img src="lhbs-cover.png" alt="Love, Hate, And The Biggest Snake" loading="lazy">
         <div class="music-card-overlay">
           <div class="play-btn-circle">
             <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
@@ -1608,29 +1693,33 @@ window.addEventListener('load', () => {
   const lidTop = document.querySelector('.eye-lid-top');
   const lidBottom = document.querySelector('.eye-lid-bottom');
   const loader = document.getElementById('loader');
+  const mobile = window.innerWidth <= 768;
 
   setTimeout(() => {
     lidTop.classList.add('open');
     lidBottom.classList.add('open');
-  }, 600);
+  }, mobile ? 400 : 600);
 
   setTimeout(() => {
     loader.classList.add('hidden');
     document.body.classList.add('letterbox-active');
-  }, 2000);
+  }, mobile ? 1200 : 2000);
 
   setTimeout(() => {
     document.body.classList.remove('letterbox-active');
-  }, 5000);
+  }, mobile ? 3500 : 5000);
 });
 
 // ============================================
-// PARTICLE SYSTEM - Floating embers
+// PARTICLE SYSTEM - Floating embers (perf-optimized)
 // ============================================
 const canvas = document.getElementById('particles');
 const ctx = canvas.getContext('2d');
 let particles = [];
 let mouse = { x: -1000, y: -1000 };
+const isMobile = window.innerWidth <= 768;
+const isLowPower = navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4;
+let particleRAF;
 
 function resizeCanvas() {
   canvas.width = window.innerWidth;
@@ -1652,15 +1741,10 @@ class Particle {
     this.fadeSpeed = Math.random() * 0.003 + 0.001;
     this.wobble = Math.random() * Math.PI * 2;
     this.wobbleSpeed = Math.random() * 0.02 + 0.005;
-    // Color: mix of red embers and gold sparks
     const r = Math.random();
-    if (r < 0.4) {
-      this.color = `rgba(185, 28, 28, ${this.opacity})`;
-    } else if (r < 0.7) {
-      this.color = `rgba(201, 168, 76, ${this.opacity})`;
-    } else {
-      this.color = `rgba(45, 90, 45, ${this.opacity})`;
-    }
+    this.r = r < 0.4 ? 185 : r < 0.7 ? 201 : 45;
+    this.g = r < 0.4 ? 28 : r < 0.7 ? 168 : 90;
+    this.b = r < 0.4 ? 28 : r < 0.7 ? 76 : 45;
   }
 
   update() {
@@ -1669,43 +1753,46 @@ class Particle {
     this.y += this.speedY;
     this.opacity -= this.fadeSpeed;
 
-    // Mouse repulsion
-    const dx = this.x - mouse.x;
-    const dy = this.y - mouse.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 100) {
-      this.x += (dx / dist) * 1.5;
-      this.y += (dy / dist) * 1.5;
+    if (!isMobile) {
+      const dx = this.x - mouse.x;
+      const dy = this.y - mouse.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < 10000) {
+        const dist = Math.sqrt(distSq);
+        this.x += (dx / dist) * 1.5;
+        this.y += (dy / dist) * 1.5;
+      }
     }
 
-    if (this.opacity <= 0 || this.y < -10) {
-      this.reset();
-    }
+    if (this.opacity <= 0 || this.y < -10) this.reset();
   }
 
   draw() {
+    const col = `rgba(${this.r},${this.g},${this.b},${this.opacity})`;
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-    ctx.fillStyle = this.color;
+    ctx.fillStyle = col;
     ctx.fill();
 
-    // Glow
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
-    const gradient = ctx.createRadialGradient(
-      this.x, this.y, 0,
-      this.x, this.y, this.size * 3
-    );
-    gradient.addColorStop(0, this.color.replace(/[\d.]+\)$/, (this.opacity * 0.3) + ')'));
-    gradient.addColorStop(1, 'transparent');
-    ctx.fillStyle = gradient;
-    ctx.fill();
+    if (!isMobile) {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
+      const gradient = ctx.createRadialGradient(
+        this.x, this.y, 0,
+        this.x, this.y, this.size * 3
+      );
+      gradient.addColorStop(0, `rgba(${this.r},${this.g},${this.b},${this.opacity * 0.3})`);
+      gradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    }
   }
 }
 
 function initParticles() {
   resizeCanvas();
-  const count = Math.min(80, Math.floor(window.innerWidth / 15));
+  const count = isMobile ? Math.min(25, Math.floor(window.innerWidth / 25))
+    : Math.min(80, Math.floor(window.innerWidth / 15));
   particles = [];
   for (let i = 0; i < count; i++) {
     const p = new Particle();
@@ -1716,21 +1803,25 @@ function initParticles() {
 
 function animateParticles() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  particles.forEach(p => {
-    p.update();
-    p.draw();
-  });
-  requestAnimationFrame(animateParticles);
+  for (let i = 0; i < particles.length; i++) {
+    particles[i].update();
+    particles[i].draw();
+  }
+  particleRAF = requestAnimationFrame(animateParticles);
 }
 
+let resizeTimeout;
 window.addEventListener('resize', () => {
-  resizeCanvas();
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(resizeCanvas, 150);
 });
 
-document.addEventListener('mousemove', (e) => {
-  mouse.x = e.clientX;
-  mouse.y = e.clientY;
-});
+if (!isMobile) {
+  document.addEventListener('mousemove', (e) => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+  });
+}
 
 initParticles();
 animateParticles();
@@ -1754,38 +1845,60 @@ const revealObserver = new IntersectionObserver((entries) => {
 revealElements.forEach(el => revealObserver.observe(el));
 
 // ============================================
-// PARALLAX ON HERO
+// PARALLAX ON HERO (RAF-throttled)
 // ============================================
 const heroCover = document.querySelector('.hero-cover-wrapper');
 const heroContent = document.querySelector('.hero-content');
+let scrollTicking = false;
 
 window.addEventListener('scroll', () => {
-  const scrollY = window.scrollY;
-  const heroHeight = window.innerHeight;
+  if (!scrollTicking) {
+    scrollTicking = true;
+    requestAnimationFrame(() => {
+      const scrollY = window.scrollY;
+      const heroHeight = window.innerHeight;
 
-  if (scrollY < heroHeight) {
-    const progress = scrollY / heroHeight;
-    if (heroCover) {
-      heroCover.style.transform = `scale(${1 - progress * 0.1}) translateY(${scrollY * 0.15}px)`;
-    }
-    heroContent.style.opacity = 1 - progress * 1.2;
+      if (scrollY < heroHeight) {
+        const progress = scrollY / heroHeight;
+        if (heroCover) {
+          heroCover.style.transform = `scale(${1 - progress * 0.1}) translateY(${scrollY * 0.15}px)`;
+        }
+        heroContent.style.opacity = 1 - progress * 1.2;
+      }
+      scrollTicking = false;
+    });
   }
-});
+}, { passive: true });
 
 // ============================================
 // MOBILE NAV
 // ============================================
 const navToggle = document.getElementById('navToggle');
 const navLinks = document.getElementById('navLinks');
+const navOverlay = document.getElementById('navOverlay');
+
+function openNav() {
+  navLinks.classList.add('open');
+  navToggle.classList.add('active');
+  navOverlay.classList.add('active');
+  document.body.classList.add('nav-open');
+}
+
+function closeNav() {
+  navLinks.classList.remove('open');
+  navToggle.classList.remove('active');
+  navOverlay.classList.remove('active');
+  document.body.classList.remove('nav-open');
+}
 
 navToggle.addEventListener('click', () => {
-  navLinks.classList.toggle('open');
+  navLinks.classList.contains('open') ? closeNav() : openNav();
 });
 
+navOverlay.addEventListener('click', closeNav);
+
 navLinks.querySelectorAll('a').forEach(link => {
-  link.addEventListener('click', () => {
-    navLinks.classList.remove('open');
-  });
+  link.addEventListener('click', closeNav);
 });
 
 // ============================================
