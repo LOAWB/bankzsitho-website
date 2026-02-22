@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNAKE III - BankzSitho</title>
+<meta name="description" content="SNAKE III - The new album from BankzSitho. Available now on all platforms.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;500;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --black: #0a0a0a;
+  --void: #030303;
+  --dark-green: #0f1f0f;
+  --scale-green: #1a3a1a;
+  --muted-green: #2d5a2d;
+  --blood: #7a1616;
+  --crimson: #b91c1c;
+  --bright-red: #dc2626;
+  --gold: #c9a84c;
+  --bright-gold: #d4af37;
+  --pale-gold: #e8d5a3;
+  --cream: #f0e6d3;
+  --smoke: #1a1a1a;
+  --ash: #2a2a2a;
+}
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--blood) var(--void);
+}
+
+body {
+  background: var(--void);
+  color: var(--cream);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  overflow-x: hidden;
+  cursor: default;
+}
+
+body::-webkit-scrollbar { width: 6px; }
+body::-webkit-scrollbar-track { background: var(--void); }
+body::-webkit-scrollbar-thumb { background: var(--blood); border-radius: 3px; }
+
+::selection {
+  background: var(--crimson);
+  color: var(--cream);
+}
+
+/* ============================================
+   LOADING SCREEN - Snake Eye Opening
+   ============================================ */
+#loader {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: var(--void);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+#loader.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.eye-container {
+  position: relative;
+  width: 200px;
+  height: 120px;
+}
+
+.eye-lid-top, .eye-lid-bottom {
+  position: absolute;
+  width: 100%;
+  height: 50%;
+  background: var(--void);
+  z-index: 2;
+  transition: transform 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.eye-lid-top { top: 0; transform-origin: top center; }
+.eye-lid-bottom { bottom: 0; transform-origin: bottom center; }
+
+.eye-lid-top.open { transform: scaleY(0); }
+.eye-lid-bottom.open { transform: scaleY(0); }
+
+.eye-ball {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center,
+    #ff1a1a 0%,
+    #cc0000 25%,
+    #8b0000 45%,
+    #3d0000 70%,
+    var(--void) 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.eye-pupil {
+  width: 8px;
+  height: 80px;
+  background: #000;
+  border-radius: 50%;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+  animation: pupilPulse 2s ease-in-out infinite;
+}
+
+@keyframes pupilPulse {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(1.3); }
+}
+
+/* ============================================
+   FILM GRAIN OVERLAY
+   ============================================ */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+  animation: grainShift 0.3s steps(3) infinite;
+}
+
+@keyframes grainShift {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-5px, 5px); }
+  66% { transform: translate(5px, -5px); }
+  100% { transform: translate(0, 0); }
+}
+
+/* ============================================
+   VIGNETTE
+   ============================================ */
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+}
+
+/* ============================================
+   PARTICLE CANVAS
+   ============================================ */
+#particles {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ============================================
+   SCALE PATTERN OVERLAY
+   ============================================ */
+.scale-pattern {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.02;
+  background-image:
+    radial-gradient(ellipse 30px 40px at 30px 40px, var(--scale-green) 50%, transparent 50%),
+    radial-gradient(ellipse 30px 40px at 0px 0px, var(--scale-green) 50%, transparent 50%);
+  background-size: 30px 40px;
+}
+
+/* ============================================
+   NAVIGATION
+   ============================================ */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9000;
+  padding: 1.5rem 3rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  backdrop-filter: blur(12px);
+  background: linear-gradient(180deg, rgba(3,3,3,0.9) 0%, transparent 100%);
+  transform: translateY(-100%);
+  animation: navSlide 0.6s ease forwards;
+  animation-delay: 3.2s;
+}
+
+@keyframes navSlide {
+  to { transform: translateY(0); }
+}
+
+.nav-brand {
+  font-family: 'Cinzel', serif;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.nav-links {
+  display: flex;
+  gap: 2.5rem;
+  list-style: none;
+}
+
+.nav-links a {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--cream);
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.3s ease, color 0.3s ease;
+  position: relative;
+}
+
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--crimson);
+  transition: width 0.3s ease;
+}
+
+.nav-links a:hover { opacity: 1; color: var(--bright-red); }
+.nav-links a:hover::after { width: 100%; }
+
+.nav-cta {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  padding: 0.6rem 1.8rem;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  background: transparent;
+}
+
+.nav-cta:hover {
+  background: var(--gold);
+  color: var(--void);
+}
+
+/* ============================================
+   HERO SECTION
+   ============================================ */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(139, 26, 26, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 20% 80%, rgba(26, 58, 26, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(201, 168, 76, 0.05) 0%, transparent 40%),
+    var(--void);
+}
+
+.hero-content {
+  text-align: center;
+  position: relative;
+  z-index: 5;
+  padding: 2rem;
+}
+
+.hero-artist {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(0.7rem, 1.2vw, 0.9rem);
+  letter-spacing: 1em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 2rem;
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeUp 1s ease forwards;
+  animation-delay: 2.8s;
+}
+
+.hero-cover-wrapper {
+  position: relative;
+  margin: 0 auto 3rem;
+  max-width: 480px;
+  opacity: 0;
+  transform: scale(0.8);
+  animation: coverReveal 1.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation-delay: 2.2s;
+}
+
+@keyframes coverReveal {
+  to { opacity: 1; transform: scale(1); }
+}
+
+.hero-cover-frame {
+  position: relative;
+  padding: 3px;
+  background: linear-gradient(135deg, var(--gold) 0%, var(--blood) 50%, var(--gold) 100%);
+}
+
+.hero-cover-frame::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border: 1px solid rgba(201, 168, 76, 0.2);
+}
+
+.hero-cover-frame::after {
+  content: '';
+  position: absolute;
+  inset: -16px;
+  border: 1px solid rgba(201, 168, 76, 0.08);
+}
+
+.hero-cover {
+  width: 100%;
+  display: block;
+  filter: saturate(1.1) contrast(1.05);
+}
+
+.cover-glow {
+  position: absolute;
+  inset: -40px;
+  background: radial-gradient(ellipse at center, rgba(185, 28, 28, 0.3) 0%, transparent 70%);
+  z-index: -1;
+  animation: glowPulse 4s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+.hero-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-weight: 900;
+  font-size: clamp(3rem, 8vw, 7rem);
+  line-height: 0.9;
+  letter-spacing: 0.08em;
+  background: linear-gradient(180deg,
+    #f5e6c8 0%,
+    #c9a84c 30%,
+    #8b6914 60%,
+    #c9a84c 80%,
+    #f5e6c8 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 40px rgba(201, 168, 76, 0.3));
+  margin-bottom: 0.5rem;
+  opacity: 0;
+  transform: translateY(40px);
+  animation: fadeUp 1s ease forwards;
+  animation-delay: 2.6s;
+}
+
+.hero-subtitle {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(0.6rem, 1vw, 0.8rem);
+  letter-spacing: 0.6em;
+  text-transform: uppercase;
+  color: var(--crimson);
+  margin-top: 1.5rem;
+  opacity: 0;
+  animation: fadeUp 1s ease forwards;
+  animation-delay: 3s;
+}
+
+.hero-cta-group {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  margin-top: 3rem;
+  opacity: 0;
+  animation: fadeUp 1s ease forwards;
+  animation-delay: 3.2s;
+}
+
+.btn-primary {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  padding: 1rem 3rem;
+  background: linear-gradient(135deg, var(--crimson), var(--blood));
+  color: var(--cream);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--bright-red), var(--crimson));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(185, 28, 28, 0.4);
+}
+
+.btn-primary:hover::before { opacity: 1; }
+.btn-primary span { position: relative; z-index: 1; }
+
+.btn-outline {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  padding: 1rem 3rem;
+  background: transparent;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.btn-outline:hover {
+  background: rgba(201, 168, 76, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(201, 168, 76, 0.15);
+}
+
+.scroll-indicator {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0;
+  animation: fadeUp 1s ease forwards;
+  animation-delay: 3.6s;
+}
+
+.scroll-indicator span {
+  font-family: 'Cinzel', serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: rgba(240, 230, 211, 0.3);
+}
+
+.scroll-line {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(180deg, var(--crimson), transparent);
+  animation: scrollPulse 2s ease-in-out infinite;
+}
+
+@keyframes scrollPulse {
+  0%, 100% { scaleY: 1; opacity: 1; }
+  50% { scaleY: 0.5; opacity: 0.3; }
+}
+
+@keyframes fadeUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   SECTION SHARED STYLES
+   ============================================ */
+section {
+  position: relative;
+  z-index: 2;
+  padding: 8rem 2rem;
+}
+
+.section-divider {
+  width: 60px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  margin: 0 auto 1.5rem;
+}
+
+.section-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.8em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--gold);
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-weight: 700;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  text-align: center;
+  letter-spacing: 0.05em;
+  color: var(--cream);
+  margin-bottom: 4rem;
+}
+
+/* ============================================
+   TRACKLIST
+   ============================================ */
+.tracklist-section {
+  background:
+    linear-gradient(180deg, var(--void) 0%, rgba(15, 31, 15, 0.3) 50%, var(--void) 100%);
+}
+
+.tracklist {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.track {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  align-items: center;
+  padding: 1.2rem 2rem;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.06);
+  cursor: pointer;
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.track::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(185, 28, 28, 0.08), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+
+.track:hover::before { transform: translateX(0); }
+
+.track:hover {
+  border-bottom-color: rgba(185, 28, 28, 0.3);
+}
+
+.track:hover .track-num { color: var(--crimson); }
+.track:hover .track-name { color: #fff; transform: translateX(8px); }
+.track:hover .track-duration { color: var(--gold); }
+
+.track-num {
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(201, 168, 76, 0.3);
+  transition: color 0.3s ease;
+}
+
+.track-name {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--cream);
+  transition: all 0.3s ease;
+}
+
+.track-feat {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: rgba(201, 168, 76, 0.5);
+  font-style: italic;
+  margin-left: 0.5rem;
+}
+
+.track-duration {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.85rem;
+  color: rgba(240, 230, 211, 0.25);
+  transition: color 0.3s ease;
+  font-variant-numeric: tabular-nums;
+}
+
+.track-play-icon {
+  display: none;
+  width: 16px;
+  height: 16px;
+}
+
+.track:hover .track-num-text { display: none; }
+.track:hover .track-play-icon { display: block; }
+
+/* ============================================
+   STREAMING PLATFORMS
+   ============================================ */
+.stream-section {
+  background:
+    radial-gradient(ellipse at center, rgba(139, 26, 26, 0.08) 0%, transparent 50%),
+    var(--void);
+}
+
+.stream-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.stream-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2.5rem 1.5rem;
+  border: 1px solid rgba(201, 168, 76, 0.08);
+  background: rgba(10, 10, 10, 0.5);
+  text-decoration: none;
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stream-link::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(185, 28, 28, 0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.stream-link:hover::before { opacity: 1; }
+
+.stream-link:hover {
+  border-color: rgba(185, 28, 28, 0.4);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.stream-icon {
+  width: 36px;
+  height: 36px;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+.stream-link:hover .stream-icon { opacity: 1; }
+
+.stream-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--cream);
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+.stream-link:hover .stream-name { opacity: 1; }
+
+/* ============================================
+   ARTIST SECTION
+   ============================================ */
+.artist-section {
+  background:
+    linear-gradient(180deg, var(--void) 0%, rgba(15, 31, 15, 0.1) 50%, var(--void) 100%);
+  overflow: hidden;
+}
+
+.artist-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  align-items: center;
+}
+
+.artist-image-wrapper {
+  position: relative;
+}
+
+.artist-image-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(135deg, var(--gold) 0%, transparent 40%, transparent 60%, var(--blood) 100%);
+  z-index: 0;
+}
+
+.artist-image-wrapper::after {
+  content: '';
+  position: absolute;
+  bottom: -30px;
+  left: 10%;
+  right: 10%;
+  height: 60px;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.6) 0%, transparent 70%);
+  z-index: -1;
+  filter: blur(15px);
+}
+
+.artist-image {
+  width: 100%;
+  display: block;
+  position: relative;
+  z-index: 1;
+  filter: contrast(1.05) brightness(0.95);
+}
+
+.artist-info {
+  padding: 2rem 0;
+}
+
+.artist-name {
+  font-family: 'Cinzel Decorative', serif;
+  font-weight: 700;
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  background: linear-gradient(180deg, var(--pale-gold), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 1.5rem;
+  line-height: 1.1;
+}
+
+.artist-bio {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.15rem;
+  line-height: 2;
+  color: rgba(240, 230, 211, 0.6);
+  margin-bottom: 2.5rem;
+  font-style: italic;
+}
+
+.artist-stats {
+  display: flex;
+  gap: 3rem;
+}
+
+.stat {
+  text-align: left;
+}
+
+.stat-number {
+  font-family: 'Cinzel', serif;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--crimson);
+  line-height: 1;
+}
+
+.stat-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(201, 168, 76, 0.5);
+  margin-top: 0.4rem;
+}
+
+@media (max-width: 768px) {
+  .artist-grid {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+    text-align: center;
+  }
+
+  .artist-image-wrapper { max-width: 350px; margin: 0 auto; }
+  .artist-stats { justify-content: center; }
+  .stat { text-align: center; }
+}
+
+/* ============================================
+   TRILOGY TIMELINE
+   ============================================ */
+.timeline-section {
+  background:
+    linear-gradient(180deg, var(--void) 0%, rgba(15, 31, 15, 0.15) 50%, var(--void) 100%);
+  overflow: hidden;
+}
+
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(201, 168, 76, 0.3) 20%,
+    var(--gold) 50%,
+    rgba(201, 168, 76, 0.3) 80%,
+    transparent
+  );
+  z-index: 0;
+}
+
+.timeline-era {
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.era-year {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1.5rem;
+}
+
+.era-cover {
+  width: 100%;
+  max-width: 220px;
+  margin: 0 auto 1.5rem;
+  position: relative;
+}
+
+.era-cover-img {
+  width: 100%;
+  display: block;
+  transition: all 0.5s ease;
+  border: 1px solid rgba(201, 168, 76, 0.1);
+}
+
+.era-current .era-cover-img {
+  filter: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 60px rgba(185, 28, 28, 0.3);
+}
+
+.timeline-era:hover .era-cover-img {
+  filter: grayscale(0) brightness(0.9);
+}
+
+.era-current:hover .era-cover-img {
+  filter: none;
+  box-shadow: 0 0 80px rgba(185, 28, 28, 0.5);
+}
+
+.era-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--cream);
+  margin-bottom: 0.5rem;
+}
+
+.era-current .era-title {
+  background: linear-gradient(180deg, var(--pale-gold), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.era-desc {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.95rem;
+  color: rgba(240, 230, 211, 0.4);
+  font-style: italic;
+  line-height: 1.6;
+}
+
+.era-current .era-desc { color: rgba(240, 230, 211, 0.7); }
+
+.era-badge {
+  display: inline-block;
+  margin-top: 1rem;
+  font-family: 'Cinzel', serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  padding: 0.4rem 1.2rem;
+  border: 1px solid var(--crimson);
+  color: var(--crimson);
+  animation: badgePulse 3s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(185, 28, 28, 0); }
+  50% { box-shadow: 0 0 20px rgba(185, 28, 28, 0.3); }
+}
+
+/* ============================================
+   MORE MUSIC
+   ============================================ */
+.more-music-section {
+  background:
+    radial-gradient(ellipse at 30% 50%, rgba(185, 28, 28, 0.06) 0%, transparent 50%),
+    var(--void);
+}
+
+.more-music-grid {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.music-card {
+  text-align: center;
+  text-decoration: none;
+  display: block;
+  transition: transform 0.4s ease;
+  flex: 1;
+  max-width: 220px;
+}
+
+.music-card:hover {
+  transform: translateY(-8px);
+}
+
+.music-card-cover {
+  position: relative;
+  margin-bottom: 1.2rem;
+  overflow: hidden;
+  border: 1px solid rgba(201, 168, 76, 0.1);
+  transition: border-color 0.4s ease;
+  aspect-ratio: auto;
+}
+
+.music-card:hover .music-card-cover {
+  border-color: rgba(185, 28, 28, 0.4);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.music-card-cover img {
+  width: 100%;
+  display: block;
+  transition: filter 0.4s ease;
+}
+
+.music-card:hover .music-card-cover img {
+  filter: brightness(1.1);
+}
+
+.music-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.music-card:hover .music-card-overlay {
+  opacity: 1;
+}
+
+.play-btn-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(185, 28, 28, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.play-btn-circle svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--cream);
+  margin-left: 3px;
+}
+
+.music-card-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--cream);
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.05em;
+}
+
+.music-card-genre {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.85rem;
+  color: rgba(201, 168, 76, 0.5);
+  font-style: italic;
+}
+
+.music-card-new {
+  display: inline-block;
+  font-family: 'Cinzel', serif;
+  font-size: 0.5rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--crimson);
+  border: 1px solid var(--crimson);
+  padding: 0.2rem 0.6rem;
+  margin-top: 0.6rem;
+}
+
+@media (max-width: 768px) {
+  .more-music-grid {
+    gap: 1.5rem;
+  }
+}
+
+/* ============================================
+   NEWSLETTER / PRE-SAVE
+   ============================================ */
+.presave-section {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(139, 26, 26, 0.1) 0%, transparent 50%),
+    var(--void);
+}
+
+.presave-content {
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.presave-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.2rem;
+  line-height: 1.8;
+  color: rgba(240, 230, 211, 0.6);
+  margin-bottom: 3rem;
+  font-style: italic;
+}
+
+.presave-form {
+  display: flex;
+  gap: 0;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.presave-input {
+  flex: 1;
+  padding: 1rem 1.5rem;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  background: rgba(42, 42, 42, 0.5);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  border-right: none;
+  color: var(--cream);
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.presave-input::placeholder {
+  color: rgba(240, 230, 211, 0.3);
+  font-style: italic;
+}
+
+.presave-input:focus {
+  border-color: var(--gold);
+}
+
+.presave-submit {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  padding: 1rem 2rem;
+  background: linear-gradient(135deg, var(--crimson), var(--blood));
+  color: var(--cream);
+  border: 1px solid var(--crimson);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.presave-submit:hover {
+  background: linear-gradient(135deg, var(--bright-red), var(--crimson));
+  box-shadow: 0 0 30px rgba(185, 28, 28, 0.4);
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+footer {
+  position: relative;
+  z-index: 2;
+  padding: 4rem 2rem;
+  border-top: 1px solid rgba(201, 168, 76, 0.06);
+  text-align: center;
+}
+
+.footer-socials {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  margin-bottom: 3rem;
+}
+
+.social-link {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  color: var(--cream);
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.social-link:hover {
+  border-color: var(--crimson);
+  background: rgba(185, 28, 28, 0.1);
+  transform: translateY(-3px);
+}
+
+.social-link svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+.social-link:hover svg { opacity: 1; }
+
+.footer-brand {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.6em;
+  text-transform: uppercase;
+  color: rgba(201, 168, 76, 0.3);
+  margin-bottom: 0.5rem;
+}
+
+.footer-copy {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.8rem;
+  color: rgba(240, 230, 211, 0.2);
+}
+
+/* ============================================
+   SCROLL REVEAL
+   ============================================ */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ============================================
+   CINEMATIC LETTERBOX BARS
+   ============================================ */
+.letterbox-top, .letterbox-bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 0;
+  background: var(--void);
+  z-index: 9996;
+  pointer-events: none;
+  transition: height 0.6s ease;
+}
+
+.letterbox-top { top: 0; }
+.letterbox-bottom { bottom: 0; }
+
+.letterbox-active .letterbox-top,
+.letterbox-active .letterbox-bottom {
+  height: 5vh;
+}
+
+/* ============================================
+   MOBILE NAV TOGGLE
+   ============================================ */
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  padding: 5px;
+  background: none;
+  border: none;
+}
+
+.nav-toggle span {
+  width: 24px;
+  height: 1px;
+  background: var(--gold);
+  transition: all 0.3s ease;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+  nav { padding: 1rem 1.5rem; }
+
+  .nav-links {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 70%;
+    height: 100vh;
+    flex-direction: column;
+    background: rgba(3, 3, 3, 0.98);
+    backdrop-filter: blur(20px);
+    padding: 6rem 3rem;
+    gap: 2rem;
+    transition: right 0.4s ease;
+  }
+
+  .nav-links.open { right: 0; }
+  .nav-cta { display: none; }
+  .nav-toggle { display: flex; }
+
+  section { padding: 5rem 1.5rem; }
+
+  .hero-cover-wrapper { max-width: 320px; }
+
+  .hero-cta-group {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .stream-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .timeline {
+    grid-template-columns: 1fr;
+    gap: 4rem;
+  }
+
+  .timeline::before { display: none; }
+
+  .era-cover { max-width: 180px; }
+
+  .presave-form { flex-direction: column; }
+
+  .presave-input { border-right: 1px solid rgba(201, 168, 76, 0.15); border-bottom: none; }
+
+  .track { grid-template-columns: 40px 1fr auto; padding: 1rem 1rem; }
+  .track-name { font-size: 0.95rem; }
+  .track-feat { display: block; margin-left: 0; margin-top: 0.2rem; font-size: 0.75rem; }
+}
+
+@media (max-width: 480px) {
+  .stream-grid { grid-template-columns: 1fr 1fr; }
+  .hero-title { font-size: clamp(2.5rem, 12vw, 4rem); }
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="loader">
+  <div class="eye-container">
+    <div class="eye-ball">
+      <div class="eye-pupil"></div>
+    </div>
+    <div class="eye-lid-top"></div>
+    <div class="eye-lid-bottom"></div>
+  </div>
+</div>
+
+<!-- ATMOSPHERIC LAYERS -->
+<div class="grain"></div>
+<div class="vignette"></div>
+<div class="scale-pattern"></div>
+<canvas id="particles"></canvas>
+<div class="letterbox-top"></div>
+<div class="letterbox-bottom"></div>
+
+<!-- NAVIGATION -->
+<nav>
+  <a href="#" class="nav-brand">BankzSitho</a>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#tracklist">Tracklist</a></li>
+    <li><a href="#stream">Stream</a></li>
+    <li><a href="#trilogy">Trilogy</a></li>
+    <li><a href="#more">More</a></li>
+    <li><a href="#connect">Connect</a></li>
+  </ul>
+  <a href="#stream" class="nav-cta">Listen Now</a>
+  <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <p class="hero-artist">BankzSitho Presents</p>
+    <div class="hero-cover-wrapper">
+      <div class="cover-glow"></div>
+      <div class="hero-cover-frame">
+        <img src="cover.jpg" alt="Snake III Album Cover" class="hero-cover">
+      </div>
+    </div>
+    <h1 class="hero-title">Snake III</h1>
+    <p class="hero-subtitle">The Trilogy Concludes</p>
+    <div class="hero-cta-group">
+      <a href="#stream" class="btn-primary"><span>Stream Now</span></a>
+      <a href="#presave" class="btn-outline">Join the Order</a>
+    </div>
+  </div>
+  <div class="scroll-indicator">
+    <span>Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- TRACKLIST -->
+<section class="tracklist-section" id="tracklist">
+  <div class="section-divider reveal"></div>
+  <p class="section-label reveal">6 Commandments</p>
+  <h2 class="section-title reveal">Tracklist</h2>
+  <div class="tracklist">
+    <div class="track reveal reveal-delay-1">
+      <div class="track-num">
+        <span class="track-num-text">01</span>
+        <svg class="track-play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      </div>
+      <div><span class="track-name">Pissy</span></div>
+      <span class="track-duration"></span>
+    </div>
+    <div class="track reveal reveal-delay-1">
+      <div class="track-num">
+        <span class="track-num-text">02</span>
+        <svg class="track-play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      </div>
+      <div><span class="track-name">Backstabbed!</span></div>
+      <span class="track-duration"></span>
+    </div>
+    <div class="track reveal reveal-delay-2">
+      <div class="track-num">
+        <span class="track-num-text">03</span>
+        <svg class="track-play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      </div>
+      <div><span class="track-name">Bame Frum</span></div>
+      <span class="track-duration"></span>
+    </div>
+    <div class="track reveal reveal-delay-2">
+      <div class="track-num">
+        <span class="track-num-text">04</span>
+        <svg class="track-play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      </div>
+      <div><span class="track-name">Dnt Test Me</span></div>
+      <span class="track-duration"></span>
+    </div>
+    <div class="track reveal reveal-delay-3">
+      <div class="track-num">
+        <span class="track-num-text">05</span>
+        <svg class="track-play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      </div>
+      <div><span class="track-name">Flash ON</span></div>
+      <span class="track-duration"></span>
+    </div>
+    <div class="track reveal reveal-delay-3">
+      <div class="track-num">
+        <span class="track-num-text">06</span>
+        <svg class="track-play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      </div>
+      <div><span class="track-name">Spinnin'</span></div>
+      <span class="track-duration"></span>
+    </div>
+  </div>
+</section>
+
+<!-- STREAMING -->
+<section class="stream-section" id="stream">
+  <div class="section-divider reveal"></div>
+  <p class="section-label reveal">Available Everywhere</p>
+  <h2 class="section-title reveal">Stream Now</h2>
+  <div class="stream-grid">
+    <a href="#" class="stream-link reveal reveal-delay-1">
+      <svg class="stream-icon" viewBox="0 0 24 24" fill="var(--cream)">
+        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+      </svg>
+      <span class="stream-name">Spotify</span>
+    </a>
+    <a href="#" class="stream-link reveal reveal-delay-2">
+      <svg class="stream-icon" viewBox="0 0 24 24" fill="var(--cream)">
+        <path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 00-1.877-.726 10.496 10.496 0 00-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026-.747.043-1.49.123-2.193.4-1.336.53-2.3 1.452-2.865 2.78-.192.448-.292.925-.363 1.408-.056.392-.088.785-.1 1.18 0 .032-.007.062-.01.093v12.223c.01.14.017.283.027.424.05.815.154 1.624.497 2.373.65 1.42 1.738 2.353 3.234 2.802.42.127.856.187 1.293.228.555.053 1.11.06 1.667.06h11.03c.525 0 1.048-.034 1.57-.1.823-.106 1.597-.35 2.296-.81a5.046 5.046 0 001.88-2.207c.186-.42.293-.87.37-1.324.113-.675.138-1.358.137-2.04-.002-3.8 0-7.595-.003-11.393zm-6.423 3.99v5.712c0 .417-.058.827-.244 1.206-.29.59-.76.962-1.388 1.14-.35.1-.706.157-1.07.173-.95.042-1.8-.335-2.22-1.175-.6-1.19.12-2.58 1.46-2.81.443-.076.9-.106 1.348-.162.302-.038.603-.09.856-.253.226-.148.34-.38.34-.665V9.83c0-.39-.1-.514-.483-.425-.764.18-1.528.358-2.29.54l-3.495.825c-.393.095-.502.232-.506.637v7.77c0 .396-.048.79-.223 1.153-.318.656-.826 1.05-1.537 1.203-.325.07-.658.112-.992.118-.9.014-1.726-.377-2.084-1.188-.586-1.324.263-2.682 1.674-2.863.39-.05.784-.078 1.174-.127.357-.046.594-.222.713-.564.067-.194.088-.398.088-.602V7.364c0-.485.164-.712.632-.835l6.225-1.53c.182-.044.366-.082.553-.096.322-.025.522.16.532.487.004.098.001.198.001.298v4.426h-.04z"/>
+      </svg>
+      <span class="stream-name">Apple Music</span>
+    </a>
+    <a href="#" class="stream-link reveal reveal-delay-3">
+      <svg class="stream-icon" viewBox="0 0 24 24" fill="var(--cream)">
+        <path d="M12 0C5.376 0 0 5.376 0 12s5.376 12 12 12 12-5.376 12-12S18.624 0 12 0zm4.872 16.344c-.144.24-.504.288-.744.144-2.04-1.248-4.608-1.536-7.632-.84-.288.072-.576-.096-.648-.384-.072-.288.096-.576.384-.648 3.312-.768 6.144-.432 8.496.96.264.144.312.504.144.768zm1.296-2.76c-.192.288-.6.384-.888.192-2.328-1.44-5.88-1.848-8.64-.96-.336.096-.696-.072-.792-.408-.096-.336.072-.696.408-.792 3.12-.984 7.008-.504 9.72 1.08.264.192.384.6.192.888zm.12-2.88c-2.808-1.68-7.44-1.824-10.128-.984-.408.12-.84-.096-.96-.504-.12-.408.096-.84.504-.96 3.072-.936 8.184-.768 11.412 1.152.384.216.504.696.288 1.08-.216.336-.696.48-1.08.264l-.036-.048z"/>
+      </svg>
+      <span class="stream-name">YouTube Music</span>
+    </a>
+    <a href="#" class="stream-link reveal reveal-delay-1">
+      <svg class="stream-icon" viewBox="0 0 24 24" fill="var(--cream)">
+        <path d="M1.175 12.225c-.051 0-.094.046-.101.1l-.233 2.154.233 2.105c.007.058.05.098.101.098.05 0 .09-.04.099-.098l.255-2.105-.27-2.154c-.009-.06-.05-.1-.1-.1m-.899.828c-.06 0-.091.037-.104.094L0 14.479l.165 1.308c.014.055.045.094.09.094.042 0 .075-.038.09-.094l.21-1.308-.21-1.334c-.015-.055-.045-.09-.09-.09m1.83-1.229c-.06 0-.105.039-.112.1l-.21 2.563.225 2.458c.007.06.053.099.113.099.054 0 .098-.038.112-.1l.255-2.458-.27-2.563c-.015-.06-.06-.099-.12-.099m.84-.27c-.067 0-.12.042-.127.105l-.21 2.835.24 2.532c.007.06.06.105.12.105.067 0 .113-.045.127-.105l.27-2.532-.27-2.835c-.007-.06-.06-.105-.127-.105m.87-.375c-.075 0-.127.048-.135.12L3.44 14.4l.24 2.602c.008.06.06.12.135.12.067 0 .12-.06.135-.12l.263-2.602-.263-2.865c-.015-.075-.068-.12-.135-.12m.9-.418c-.082 0-.142.06-.15.127L4.2 14.4l.24 2.655c.015.075.067.127.142.127.075 0 .135-.052.15-.127l.293-2.655-.293-2.955c-.015-.067-.075-.127-.15-.127m.93-.278c-.09 0-.15.06-.157.135L5.06 14.4l.232 2.693c.008.082.068.142.158.142.082 0 .142-.06.15-.142l.27-2.693-.27-3.075c-.015-.075-.075-.135-.157-.135m.94-.105c-.098 0-.165.06-.172.142l-.21 3.18.21 2.693c.007.09.074.15.164.15.09 0 .158-.06.165-.15l.24-2.693-.24-3.18c-.007-.09-.075-.142-.165-.142m.96.105c-.105 0-.172.067-.18.15l-.195 3.075.195 2.685c.008.097.075.157.18.157s.165-.06.18-.157l.22-2.685-.22-3.075c-.015-.083-.075-.15-.18-.15m.953-.075c-.112 0-.187.075-.195.165L8.64 14.4l.195 2.67c.008.1.082.172.194.172.105 0 .18-.067.195-.172l.21-2.67-.21-3.345c-.008-.09-.082-.165-.195-.165m1.005.165c-.12 0-.195.082-.203.18l-.165 3.18.165 2.648c.008.105.083.187.203.187.112 0 .188-.082.203-.187l.187-2.648-.187-3.18c-.015-.098-.09-.18-.203-.18m.99-.15c-.12 0-.203.09-.21.195l-.15 3.33.15 2.625c.007.112.09.202.21.202s.195-.09.21-.202l.165-2.625-.165-3.33c-.008-.105-.09-.195-.21-.195m1.02-.06c-.128 0-.21.098-.217.21l-.12 3.39.12 2.603c.007.12.09.21.218.21.127 0 .21-.09.217-.21l.135-2.603-.135-3.39c-.007-.112-.09-.21-.218-.21m.975-.09c-.135 0-.225.105-.232.225l-.098 3.48.105 2.565c.008.12.097.225.225.225.135 0 .225-.105.233-.225l.112-2.565-.112-3.48c-.008-.12-.098-.225-.233-.225m1.065.63c-.135 0-.24.105-.24.24l-.075 2.85.075 2.535c0 .135.105.24.24.24.127 0 .232-.105.24-.24l.083-2.535-.083-2.85c-.008-.135-.113-.24-.24-.24m.96-.39c-.143 0-.248.112-.255.248l-.068 3.24.068 2.497c.007.143.112.255.255.255.135 0 .24-.112.255-.255l.075-2.497-.075-3.24c-.015-.136-.12-.248-.255-.248m1.02-.33c-.15 0-.255.12-.263.262l-.06 3.57.06 2.468c.008.15.112.262.262.262.143 0 .248-.112.263-.262l.067-2.468-.067-3.57c-.015-.15-.12-.262-.263-.262m.98-.038c-.15 0-.262.12-.27.27l-.052 3.608.06 2.43c.007.15.12.27.262.27.15 0 .262-.12.27-.27l.06-2.43-.06-3.608c-.008-.15-.12-.27-.27-.27m1.02.06c-.158 0-.27.128-.278.285l-.037 3.547.037 2.4c.008.158.12.285.278.285.15 0 .27-.127.278-.285l.045-2.4-.045-3.547c-.008-.158-.128-.285-.278-.285m.99-.075c-.165 0-.285.135-.293.3l-.03 3.622.03 2.378c.008.158.128.3.293.3.158 0 .278-.142.293-.3l.03-2.378-.03-3.622c-.015-.165-.135-.3-.293-.3m.99-.03c-.165 0-.293.135-.3.308l-.023 3.652.023 2.348c.007.172.135.307.3.307.165 0 .293-.135.307-.307l.023-2.348-.023-3.652c-.014-.173-.142-.308-.307-.308m1.013.06c-.172 0-.3.143-.308.315l-.015 3.592.015 2.325c.008.173.136.315.308.315.165 0 .293-.142.308-.315l.015-2.325-.015-3.592c-.015-.173-.143-.315-.308-.315m.96-.195c-.18 0-.308.15-.316.33L22.8 14.4l.008 2.295c.008.18.135.33.315.33.172 0 .308-.15.315-.33l.008-2.295-.008-3.675c-.007-.18-.143-.33-.315-.33m1.065.21c-.18 0-.315.15-.323.338l-.007 3.465.007 2.272c.008.188.143.338.323.338.172 0 .307-.15.322-.338l.008-2.272-.008-3.465c-.015-.188-.15-.338-.322-.338"/>
+      </svg>
+      <span class="stream-name">SoundCloud</span>
+    </a>
+    <a href="#" class="stream-link reveal reveal-delay-2">
+      <svg class="stream-icon" viewBox="0 0 24 24" fill="var(--cream)">
+        <path d="M12.012 3.992L8.008 7.996 4.004 3.992 0 7.996 4.004 12l-4.004 4.004L4.004 20l4.004-4.004L12.012 20l4.004-4.004L20.02 20l4.004-4.004-4.004-4.004 4.004-4.004L20.02 0l-4.004 4.004L12.012 0 8.008 4.004z"/>
+      </svg>
+      <span class="stream-name">Tidal</span>
+    </a>
+    <a href="#" class="stream-link reveal reveal-delay-3">
+      <svg class="stream-icon" viewBox="0 0 24 24" fill="var(--cream)">
+        <path d="M15.188 10.77l-5.39-3.11c-.607-.35-1.363.088-1.363.787v6.214c0 .7.756 1.137 1.363.787l5.39-3.11c.607-.35.607-1.225 0-1.575v.007zM12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z"/>
+      </svg>
+      <span class="stream-name">Amazon Music</span>
+    </a>
+  </div>
+</section>
+
+<!-- THE ARTIST -->
+<section class="artist-section" id="artist">
+  <div class="section-divider reveal"></div>
+  <p class="section-label reveal">The Serpent</p>
+  <h2 class="section-title reveal">The Artist</h2>
+  <div class="artist-grid">
+    <div class="artist-image-wrapper reveal reveal-delay-1">
+      <img src="artist.jpg" alt="BankzSitho" class="artist-image">
+    </div>
+    <div class="artist-info reveal reveal-delay-2">
+      <h3 class="artist-name">BankzSitho</h3>
+      <p class="artist-bio">
+        Three albums. One evolution. From the garden of temptation to the streets
+        where fangs are bared, to the seat of power where the serpent wears the suit.
+        Snake III is the culmination of a trilogy that refuses to be ignored.
+      </p>
+      <div class="artist-stats">
+        <div class="stat">
+          <div class="stat-number">IV</div>
+          <div class="stat-label">Projects</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">III</div>
+          <div class="stat-label">Snake Trilogy</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">I</div>
+          <div class="stat-label">R&B Album</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRILOGY TIMELINE -->
+<section class="timeline-section" id="trilogy">
+  <div class="section-divider reveal"></div>
+  <p class="section-label reveal">The Evolution</p>
+  <h2 class="section-title reveal">The Snake Trilogy</h2>
+  <div class="timeline">
+    <div class="timeline-era reveal reveal-delay-1">
+      <p class="era-year">Chapter I</p>
+      <div class="era-cover">
+        <img src="snake1-cover.png" alt="Snake I" class="era-cover-img">
+      </div>
+      <h3 class="era-title">Snake</h3>
+      <p class="era-desc">The temptation. The forbidden fruit. Where the venom first entered the veins.</p>
+    </div>
+    <div class="timeline-era reveal reveal-delay-2">
+      <p class="era-year">Chapter II</p>
+      <div class="era-cover">
+        <img src="snake2-cover.png" alt="Snake II" class="era-cover-img">
+      </div>
+      <h3 class="era-title">Snake II</h3>
+      <p class="era-desc">The streets. Blade in hand, fangs out. No more hiding.</p>
+    </div>
+    <div class="timeline-era era-current reveal reveal-delay-3">
+      <p class="era-year">Chapter III</p>
+      <div class="era-cover">
+        <img src="cover.jpg" alt="Snake III" class="era-cover-img">
+      </div>
+      <h3 class="era-title">Snake III</h3>
+      <p class="era-desc">The coronation. The serpent takes the throne. No antidote.</p>
+      <span class="era-badge">Out Now</span>
+    </div>
+  </div>
+</section>
+
+<!-- MORE MUSIC -->
+<section class="more-music-section" id="more">
+  <div class="section-divider reveal"></div>
+  <p class="section-label reveal">Beyond the Trilogy</p>
+  <h2 class="section-title reveal">More Music</h2>
+  <div class="more-music-grid">
+    <a href="#" class="music-card reveal reveal-delay-1">
+      <div class="music-card-cover">
+        <img src="lhbs-cover.png" alt="Love, Hate, And The Biggest Snake">
+        <div class="music-card-overlay">
+          <div class="play-btn-circle">
+            <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+          </div>
+        </div>
+      </div>
+      <h3 class="music-card-title">Love, Hate, And The Biggest Snake</h3>
+      <p class="music-card-genre">R&B</p>
+      <span class="music-card-new">New Release</span>
+    </a>
+  </div>
+</section>
+
+<!-- PRE-SAVE / NEWSLETTER -->
+<section class="presave-section" id="presave">
+  <div class="section-divider reveal"></div>
+  <p class="section-label reveal">Inner Circle</p>
+  <h2 class="section-title reveal">Join the Order</h2>
+  <div class="presave-content reveal">
+    <p class="presave-text">
+      Enter the inner circle. Get exclusive drops, unreleased tracks,
+      behind-the-scenes content, and first access to everything BankzSitho.
+    </p>
+    <form class="presave-form" onsubmit="handleSubscribe(event)">
+      <input type="email" class="presave-input" placeholder="Enter your email..." required>
+      <button type="submit" class="presave-submit">Subscribe</button>
+    </form>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer id="connect">
+  <div class="footer-socials">
+    <!-- Instagram -->
+    <a href="https://www.instagram.com/bankzsithoo" target="_blank" rel="noopener" class="social-link" aria-label="Instagram">
+      <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+    </a>
+    <!-- Twitter/X -->
+    <a href="#" class="social-link" aria-label="X / Twitter">
+      <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+    </a>
+    <!-- TikTok -->
+    <a href="https://www.tiktok.com/@bankzsithooo" target="_blank" rel="noopener" class="social-link" aria-label="TikTok">
+      <svg viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
+    </a>
+    <!-- YouTube -->
+    <a href="#" class="social-link" aria-label="YouTube">
+      <svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+    </a>
+    <!-- Spotify -->
+    <a href="#" class="social-link" aria-label="Spotify">
+      <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+    </a>
+  </div>
+  <p class="footer-brand">BankzSitho</p>
+  <p class="footer-copy">&copy; 2026 BankzSitho. All Rights Reserved. Snake III.</p>
+</footer>
+
+<script>
+// ============================================
+// LOADING SEQUENCE
+// ============================================
+window.addEventListener('load', () => {
+  const lidTop = document.querySelector('.eye-lid-top');
+  const lidBottom = document.querySelector('.eye-lid-bottom');
+  const loader = document.getElementById('loader');
+
+  setTimeout(() => {
+    lidTop.classList.add('open');
+    lidBottom.classList.add('open');
+  }, 600);
+
+  setTimeout(() => {
+    loader.classList.add('hidden');
+    document.body.classList.add('letterbox-active');
+  }, 2000);
+
+  setTimeout(() => {
+    document.body.classList.remove('letterbox-active');
+  }, 5000);
+});
+
+// ============================================
+// PARTICLE SYSTEM - Floating embers
+// ============================================
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+let particles = [];
+let mouse = { x: -1000, y: -1000 };
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.x = Math.random() * canvas.width;
+    this.y = canvas.height + Math.random() * 100;
+    this.size = Math.random() * 2 + 0.5;
+    this.speedY = -(Math.random() * 0.5 + 0.15);
+    this.speedX = (Math.random() - 0.5) * 0.3;
+    this.opacity = Math.random() * 0.5 + 0.1;
+    this.fadeSpeed = Math.random() * 0.003 + 0.001;
+    this.wobble = Math.random() * Math.PI * 2;
+    this.wobbleSpeed = Math.random() * 0.02 + 0.005;
+    // Color: mix of red embers and gold sparks
+    const r = Math.random();
+    if (r < 0.4) {
+      this.color = `rgba(185, 28, 28, ${this.opacity})`;
+    } else if (r < 0.7) {
+      this.color = `rgba(201, 168, 76, ${this.opacity})`;
+    } else {
+      this.color = `rgba(45, 90, 45, ${this.opacity})`;
+    }
+  }
+
+  update() {
+    this.wobble += this.wobbleSpeed;
+    this.x += this.speedX + Math.sin(this.wobble) * 0.2;
+    this.y += this.speedY;
+    this.opacity -= this.fadeSpeed;
+
+    // Mouse repulsion
+    const dx = this.x - mouse.x;
+    const dy = this.y - mouse.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 100) {
+      this.x += (dx / dist) * 1.5;
+      this.y += (dy / dist) * 1.5;
+    }
+
+    if (this.opacity <= 0 || this.y < -10) {
+      this.reset();
+    }
+  }
+
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+
+    // Glow
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
+    const gradient = ctx.createRadialGradient(
+      this.x, this.y, 0,
+      this.x, this.y, this.size * 3
+    );
+    gradient.addColorStop(0, this.color.replace(/[\d.]+\)$/, (this.opacity * 0.3) + ')'));
+    gradient.addColorStop(1, 'transparent');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+  }
+}
+
+function initParticles() {
+  resizeCanvas();
+  const count = Math.min(80, Math.floor(window.innerWidth / 15));
+  particles = [];
+  for (let i = 0; i < count; i++) {
+    const p = new Particle();
+    p.y = Math.random() * canvas.height;
+    particles.push(p);
+  }
+}
+
+function animateParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => {
+    p.update();
+    p.draw();
+  });
+  requestAnimationFrame(animateParticles);
+}
+
+window.addEventListener('resize', () => {
+  resizeCanvas();
+});
+
+document.addEventListener('mousemove', (e) => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+});
+
+initParticles();
+animateParticles();
+
+// ============================================
+// SCROLL REVEAL
+// ============================================
+const revealElements = document.querySelectorAll('.reveal');
+
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, {
+  threshold: 0.1,
+  rootMargin: '0px 0px -50px 0px'
+});
+
+revealElements.forEach(el => revealObserver.observe(el));
+
+// ============================================
+// PARALLAX ON HERO
+// ============================================
+const heroCover = document.querySelector('.hero-cover-wrapper');
+const heroContent = document.querySelector('.hero-content');
+
+window.addEventListener('scroll', () => {
+  const scrollY = window.scrollY;
+  const heroHeight = window.innerHeight;
+
+  if (scrollY < heroHeight) {
+    const progress = scrollY / heroHeight;
+    if (heroCover) {
+      heroCover.style.transform = `scale(${1 - progress * 0.1}) translateY(${scrollY * 0.15}px)`;
+    }
+    heroContent.style.opacity = 1 - progress * 1.2;
+  }
+});
+
+// ============================================
+// MOBILE NAV
+// ============================================
+const navToggle = document.getElementById('navToggle');
+const navLinks = document.getElementById('navLinks');
+
+navToggle.addEventListener('click', () => {
+  navLinks.classList.toggle('open');
+});
+
+navLinks.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    navLinks.classList.remove('open');
+  });
+});
+
+// ============================================
+// NEWSLETTER FORM
+// ============================================
+function handleSubscribe(e) {
+  e.preventDefault();
+  const input = e.target.querySelector('input');
+  const btn = e.target.querySelector('button');
+  const originalText = btn.textContent;
+
+  btn.textContent = 'Welcome';
+  btn.style.background = 'linear-gradient(135deg, #1a3a1a, #0f1f0f)';
+  btn.style.borderColor = '#2d5a2d';
+  input.value = '';
+
+  setTimeout(() => {
+    btn.textContent = originalText;
+    btn.style.background = '';
+    btn.style.borderColor = '';
+  }, 3000);
+}
+
+// ============================================
+// TRACK HOVER AUDIO FEEDBACK (visual pulse)
+// ============================================
+document.querySelectorAll('.track').forEach(track => {
+  track.addEventListener('mouseenter', () => {
+    track.style.background = 'rgba(185, 28, 28, 0.03)';
+  });
+  track.addEventListener('mouseleave', () => {
+    track.style.background = 'transparent';
+  });
+});
+
+// ============================================
+// SMOOTH SCROLL FOR ANCHORS
+// ============================================
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function (e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+</script>
+</body>
+</html>
