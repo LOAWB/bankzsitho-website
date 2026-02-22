@@ -1,6 +1,6 @@
 FROM nginx:alpine
-COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY . /usr/share/nginx/html
-ENV PORT=8080
+COPY nginx.conf /etc/nginx/conf.d/default.conf.template
+RUN apk add --no-cache bash
 EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
+CMD /bin/bash -c "sed -i 's/PORT_PLACEHOLDER/'\"${PORT:-8080}\"'/' /etc/nginx/conf.d/default.conf.template && cp /etc/nginx/conf.d/default.conf.template /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
